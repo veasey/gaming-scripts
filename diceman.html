@@ -1,10 +1,6 @@
 <html>
-
-    <!-- TODO: Maybe before clicking submit, view an average of expected wounds -->
-
     <head>
-        <title>Does It Wound?</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>D20 Converter</title>
         <style>
         
         input[type=number] {
@@ -50,7 +46,10 @@
 
         <div class="container">
 
-            <p>Roll loads of dice, how many models / wounds do I remove?</p>
+            <p>Convert siloutted (D6) dice rolls to a single D20 roll.</p>
+            <p>This is a tool potentially for creating a matrix of values for what value each model in a unit would require to
+            wound another unit with a single dice roll, as opposed to many.
+            </p>
 
             <form onsubmit="event.preventDefault(); return doesItWound();">
                 
@@ -65,11 +64,13 @@
                         <div><input id="hit" type="number" min="0" value="3" />To Hit</div>
                         <div><input id="wound" type="number" min="0" max="6" value="4" />To Wound</div>
 
+                        <!--
                         <p>Rerolls</p>
 
                         <div><input id="hit_reroll" type="checkbox" />Reroll Hits</div>
                         <div><input id="hit_reroll_1" type="checkbox" />Reroll Hit rolls of 1</div>
                         <div><input id="wound_reroll" type="checkbox" />Reroll Wounds</div>
+                        -->
                     </div>
 
                     <div class="col">
@@ -83,6 +84,7 @@
                 <div class="clear"></div>
 
                 <p id="result" class="result"><p>
+                <p id="autoWounds" class="autoWounds"><p></p>
 
                 <input type="submit">
             </form>
@@ -92,76 +94,70 @@
 
         function doesItWound() {
 
-            let roll = 0;
-            let wounds = 0;
+            let d20Roll = 20;
+            let ratio = 1;
+            let oneHundredthPercentile = 100;
+            let autoWounds = 0;
+
+            // dice rolls to decumal numbers
+            let ratioConversion = { 
+                0: 0,
+                1: 1, 
+                2: 0.833, 
+                3: 0.66666666666666,
+                4: 0.5,
+                5: 0.33333333333333,
+                6: 0.16666666666667
+            };
 
             let attacks = document.getElementById("attacks").value;
 
             let hit = document.getElementById("hit").value;
             let wound = document.getElementById("wound").value;
-
+            
+            /*
             let hitReRoll = document.getElementById("hit_reroll").checked;
             let hitReRollOnes = document.getElementById("hit_reroll_1").checked;
             let woundReRoll = document.getElementById("wound_reroll").checked;
-            
+            */
+
             let save = document.getElementById("save").value;
             let feelNoPain = document.getElementById("feel_no_pain").value;
             
-            // does it hit?
-            let hits = 0;
-            for (let i = 0; i < attacks; i++) {
+            // work out the 100th percentile of a wound
 
-              // roll
-              roll = rollD6();
+            hitDec = ratioConversion[hit];
+            woundDec = ratioConversion[wound];
 
-              // rerolls
-              if (roll < hit && (hitReRoll || (roll == 1 && hitReRollOnes))) {
-                roll = rollD6();
-              }
+            saveDec = ratioConversion[save];
+            feelNoPainDec = ratioConversion[feelNoPain];
 
-              // hits
-              if (rollD6() >= hit) {
-                hits++;
-              }             
+            ratio = hitDec * woundDec;
+
+            if (save > 0) {
+                ratio = ratio - (ratio / save);
+            }           
+            
+            if (feelNoPain > 0) {
+                ratio = ratio - (ratio / feelNoPain);
             }
 
-            // does it wound
-            for (i = 0; i < hits; i++) {
-
-                roll = rollD6();
-
-                if (roll < wound) {
-                    roll = rollD6();
-                }
-
-                if (roll >= wound) {
-
-                    // saving rolls
-                    roll = rollD6();
-
-                    if (save > 0 && (roll < save)) {
-
-                        if (feelNoPain > 0) {
-
-                            if (rollD6() < feelNoPain) {
-                                wounds++;
-                            }
-
-                            // saved on feel no pain
-
-                        } else {
-                            
-                            wounds++;
-                        }
-                    }              
-                }
+            if (ratio < 0) {
+                ratio = 0;
             }
+     
+            oneHundredthPercentile = ratio * 100;
+            d20Roll = oneHundredthPercentile / 5;
 
-            document.getElementById("result").innerHTML = wounds + " Wounds";
-        }
+            console.log(d20Roll);
+            console.log(attacks);
+            console.log( (d20Roll * attacks) / 20 );
 
-        function rollD6() {
-            return Math.floor(Math.random() * (6 - 1) ) + 1;
+            autoWounds = (d20Roll * attacks) / 20;
+            
+            let result = "Roll Under <u>" + Math.round(d20Roll) + "</u> on a D20";
+            document.getElementById("result").innerHTML = result;
+            document.getElementById("autoWounds").innerHTML = Math.floor(autoWounds) + " autoWounds";
         }
 
     </script>
